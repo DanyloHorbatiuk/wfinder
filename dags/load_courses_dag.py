@@ -107,6 +107,63 @@ def load_courses_pipeline_dag():
         finally:
             session.close()
 
+    @task
+    def enrich_courses() -> dict:
+        """SPEC §9 (E-04, phase 2): rule-based level/format/city/country for
+        every course version whose enrichment is missing or stale."""
+        from sqlalchemy import select
+
+        from core.db import Session
+        from core.model import Course, CourseEnrichment
+        from enrich.classify import RULES_VERSION, classify
+        from utils.logger import get_logger
+
+        logger = get_logger(__name__)
+        session = Session()
+        try:
+            existing_by_course = {ce.course_id: ce for ce in session.scalars(select(CourseEnrichment))}
+            courses = [
+                c
+                for c in session.scalars(select(Course))
+                if existing_by_course.get(c.id) is None or existing_by_course[c.id].rules_version < RULES_VERSION
+            ]
+
+            for course in courses:
+                fields = {
+                    "level": course.level,
+                    "course_type": course.course_type,
+                    "title": course.title,
+                    "format": course.format,
+                    "city": course.city,
+                    "country": course.country,
+                }
+                result = classify(fields)
+                existing = existing_by_course.get(course.id)
+                if existing is None:
+                    session.add(
+                        CourseEnrichment(
+                            course_id=course.id,
+                            level_norm=result.level_norm,
+                            format_norm=result.format_norm,
+                            city_norm=result.city_norm,
+                            country_norm=result.country_norm,
+                            rules_version=RULES_VERSION,
+                        )
+                    )
+                else:
+                    existing.level_norm = result.level_norm
+                    existing.format_norm = result.format_norm
+                    existing.city_norm = result.city_norm
+                    existing.country_norm = result.country_norm
+                    existing.rules_version = RULES_VERSION
+            session.commit()
+
+            result_summary = {"courses_processed": len(courses)}
+            logger.info(f"enrich_courses: {result_summary}")
+            return result_summary
+        finally:
+            session.close()
+
     @task(trigger_rule="all_done")
     def notify_digest(load_report: dict):
         from notify.digest import build_and_send_digest
@@ -138,10 +195,11 @@ def load_courses_pipeline_dag():
     fetch_task = fetch_one_source.expand(source=sources)
     load_task = load_all_to_db()
     skills_task = extract_skills()
+    enrich_task = enrich_courses()
     notify_task = notify_digest(load_task)
     finalize_task = finalize(load_task)
 
-    _ = fetch_task >> load_task >> skills_task >> notify_task >> finalize_task
+    _ = fetch_task >> load_task >> skills_task >> enrich_task >> notify_task >> finalize_task
 
 
 load_courses_pipeline_dag()

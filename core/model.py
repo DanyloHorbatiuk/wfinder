@@ -159,3 +159,29 @@ class CourseSkill(Base):
 
     def __repr__(self) -> str:
         return f"CourseSkill(course_id={self.course_id}, skill_id={self.skill_id}, field={self.field!r})"
+
+
+class CourseEnrichment(Base):
+    """SPEC §9 (E-04, phase 2). Derived fields, never part of content_hash."""
+
+    __tablename__ = "course_enrichment"
+    __table_args__ = (
+        CheckConstraint(
+            "level_norm IN ('intern', 'junior', 'middle', 'senior', 'unknown')",
+            name="ck_enrichment_level_norm",
+        ),
+        CheckConstraint(
+            "format_norm IN ('online', 'offline', 'hybrid', 'unknown')",
+            name="ck_enrichment_format_norm",
+        ),
+    )
+
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True)
+    level_norm = Column(String(16), nullable=False)
+    format_norm = Column(String(16), nullable=False)
+    city_norm = Column(String, nullable=True)
+    country_norm = Column(String, nullable=True)
+    rules_version = Column(Integer, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"CourseEnrichment(course_id={self.course_id}, level_norm={self.level_norm!r}, format_norm={self.format_norm!r})"

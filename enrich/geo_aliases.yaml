@@ -1,0 +1,32 @@
+# City/country name normalization for E-04 (SPEC §9). Keys are matched
+# case-insensitively against the raw value; values are the canonical form.
+cities:
+  kyiv: Kyiv
+  kiev: Kyiv
+  lviv: Lviv
+  lvov: Lviv
+  kharkiv: Kharkiv
+  kharkov: Kharkiv
+  odesa: Odesa
+  odessa: Odesa
+  dnipro: Dnipro
+  dnepropetrovsk: Dnipro
+  ivano-frankivsk: Ivano-Frankivsk
+  vinnytsia: Vinnytsia
+  vinnitsa: Vinnytsia
+  warsaw: Warsaw
+  warszawa: Warsaw
+  krakow: Krakow
+  cracow: Krakow
+
+countries:
+  ukraine: Ukraine
+  poland: Poland
+  polska: Poland
+  united states: United States
+  usa: United States
+  u.s.a.: United States
+  united kingdom: United Kingdom
+  uk: United Kingdom
+  germany: Germany
+  deutschland: Germany
