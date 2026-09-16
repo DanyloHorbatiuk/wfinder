@@ -19,18 +19,15 @@ REQUEST_TIMEOUT = 15
 
 
 def fetch_and_save_single(name: str, url: str) -> dict:
+    """Raises on any failure (HTTP, invalid JSON, MinIO, DB) so the Airflow task
+    actually fails and retries (D5, SPEC §6.1) instead of silently reporting success."""
     logger.info(f"fetching {name} url...")
-    try:
-        content = _fetch_source_content(name, url)
-        fetched_at = utcnow()
-        file_name = f"{name}_{fetched_at.strftime('%Y%m%dT%H%M%SZ')}"
-        load_file_and_meta(file_name, content, fetched_at)
-        logger.info(f"file and meta {file_name} finished successfully")
-        return {"name": name, "status": "success"}
-
-    except Exception as e:
-        logger.error(f"error fetching {name}: {e}")
-        return {"name": name, "status": "error", "error": str(e)}
+    content = _fetch_source_content(name, url)
+    fetched_at = utcnow()
+    file_name = f"{name}_{fetched_at.strftime('%Y%m%dT%H%M%SZ')}"
+    load_file_and_meta(file_name, content, fetched_at)
+    logger.info(f"file and meta {file_name} finished successfully")
+    return {"name": name, "status": "success"}
 
 
 def _fetch_source_content(name: str, url: str) -> str:
@@ -38,7 +35,9 @@ def _fetch_source_content(name: str, url: str) -> str:
         return _fetch_softserve_all_pages(url)
     response = cf_requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
-    return response.text
+    text = response.text
+    json.loads(text)  # validate before it ever reaches MinIO (D5, SPEC §6.1)
+    return text
 
 
 def _fetch_softserve_all_pages(url: str) -> str:

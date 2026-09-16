@@ -28,7 +28,7 @@ def load_courses_pipeline_dag():
         from fetch import fetch_and_save_single
         return fetch_and_save_single(source["name"], source["url"])
 
-    @task
+    @task(trigger_rule="all_done")
     def load_all_to_db(run_id: str = None) -> dict:
         from core.db import Session
         from storage.loader import process_pending_files
@@ -40,18 +40,40 @@ def load_courses_pipeline_dag():
         finally:
             session.close()
 
-    @task
-    def notify_new_courses_task():
+    @task(trigger_rule="all_done")
+    def notify_digest():
         from notify.digest import build_and_send_today_digest
         build_and_send_today_digest()
         return True
 
+    @task(trigger_rule="all_done")
+    def finalize(load_report: dict):
+        """Fails the DAG run (no retries) if any upstream task failed, or if
+        load_all_to_db recorded per-file errors it otherwise isolates and
+        swallows by design (F-02). SPEC §6.1."""
+        from airflow.exceptions import AirflowFailException
+        from airflow.sdk import get_current_context
+        from airflow.utils.state import TaskInstanceState
+
+        context = get_current_context()
+        failed = context["dag_run"].get_task_instances(
+            state=[TaskInstanceState.FAILED, TaskInstanceState.UPSTREAM_FAILED]
+        )
+        if failed:
+            task_ids = sorted({ti.task_id for ti in failed})
+            raise AirflowFailException(f"upstream task(s) failed: {', '.join(task_ids)}")
+
+        errors = (load_report or {}).get("errors") or []
+        if errors:
+            raise AirflowFailException(f"load_all_to_db reported {len(errors)} file error(s): {errors}")
+
     sources = get_sources()
     fetch_task = fetch_one_source.expand(source=sources)
     load_task = load_all_to_db()
-    notify_task = notify_new_courses_task()
+    notify_task = notify_digest()
+    finalize_task = finalize(load_task)
 
-    _ = fetch_task >> load_task >> notify_task
+    _ = fetch_task >> load_task >> notify_task >> finalize_task
 
 
 load_courses_pipeline_dag()
