@@ -6,8 +6,10 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
@@ -84,6 +86,7 @@ class Course(Base):
     content_hash = Column(String(64), nullable=True)  # sha256 of tracked fields, see core/hashing.py
     last_seen_at = Column(DateTime, nullable=True)  # snapshot_at of the last time this version was observed
     close_reason = Column(String(16), nullable=True)  # "changed" | "removed", NULL while active
+    skills_version = Column(Integer, nullable=True)  # enrich.skills.SKILLS_VERSION last applied to this version
 
     created_at = Column(DateTime, default=utcnow, nullable=False)
     active_from = Column(DateTime, nullable=True)
@@ -116,9 +119,9 @@ class LoadStats(Base):
     inserted = Column(Integer, nullable=False)
     changed = Column(Integer, nullable=False)
     unchanged = Column(Integer, nullable=False)
-    closed = Column(Integer, nullable=False, default=0)  # 0 until E-06
+    closed = Column(Integer, nullable=False, default=0)
 
-    closures_blocked = Column(Boolean, nullable=False, default=False)  # until E-06
+    closures_blocked = Column(Boolean, nullable=False, default=False)
     block_reason = Column(Text, nullable=True)
 
     parser_version = Column(Integer, nullable=False)
@@ -127,3 +130,32 @@ class LoadStats(Base):
 
     def __repr__(self) -> str:
         return f"LoadStats(file_record_id={self.file_record_id}, source={self.source!r}, snapshot_at={self.snapshot_at})"
+
+
+class Skill(Base):
+    """SPEC §8.5. Synced from enrich/skills_taxonomy.yaml (upsert by name)."""
+
+    __tablename__ = "skill"
+    __table_args__ = (UniqueConstraint("name", name="uq_skill_name"),)
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"Skill(id={self.id}, name={self.name!r}, category={self.category!r})"
+
+
+class CourseSkill(Base):
+    """SPEC §8.5. Tied to a specific course version, since the matched text belongs to it."""
+
+    __tablename__ = "course_skill"
+    __table_args__ = (PrimaryKeyConstraint("course_id", "skill_id"),)
+
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    skill_id = Column(Integer, ForeignKey("skill.id"), nullable=False)
+    matched_text = Column(String, nullable=False)
+    field = Column(String, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"CourseSkill(course_id={self.course_id}, skill_id={self.skill_id}, field={self.field!r})"

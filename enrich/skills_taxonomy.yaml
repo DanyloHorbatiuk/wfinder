@@ -1,0 +1,525 @@
+# Skills taxonomy for E-01 (SPEC §8.3-8.4). Any change to this file's structure
+# (skills, aliases, strict_aliases, direction_map) requires bumping
+# enrich.skills.SKILLS_VERSION and running a replay.
+#
+# aliases: case-insensitive, word-boundary matched.
+# strict_aliases: case-sensitive, matched only in title/tags (ambiguous short
+# names that would otherwise false-positive against ordinary English words).
+
+skills:
+  # --- language ---
+  - name: JavaScript
+    category: language
+    aliases: [javascript, js, ecmascript]
+  - name: TypeScript
+    category: language
+    aliases: [typescript, ts]
+  - name: Python
+    category: language
+    aliases: [python]
+  - name: Java
+    category: language
+    aliases: [java]
+    strict_aliases: [Java]
+  - name: C#
+    category: language
+    aliases: [c#, csharp]
+  - name: C++
+    category: language
+    aliases: [c++, cpp]
+  - name: C
+    category: language
+    aliases: []
+    strict_aliases: [C]
+  - name: Go
+    category: language
+    aliases: [golang]
+    strict_aliases: [Go]
+  - name: Rust
+    category: language
+    aliases: [rust]
+  - name: Ruby
+    category: language
+    aliases: [ruby]
+  - name: PHP
+    category: language
+    aliases: [php]
+  - name: Swift
+    category: language
+    aliases: [swift]
+  - name: Kotlin
+    category: language
+    aliases: [kotlin]
+  - name: Scala
+    category: language
+    aliases: [scala]
+  - name: R
+    category: language
+    aliases: []
+    strict_aliases: [R]
+  - name: Perl
+    category: language
+    aliases: [perl]
+  - name: Objective-C
+    category: language
+    aliases: [objective-c, objective c]
+  - name: Dart
+    category: language
+    aliases: [dart]
+  - name: Elixir
+    category: language
+    aliases: [elixir]
+  - name: Haskell
+    category: language
+    aliases: [haskell]
+  - name: SQL
+    category: language
+    aliases: [sql]
+
+  # --- frontend ---
+  - name: React
+    category: frontend
+    aliases: [react, react.js, reactjs]
+  - name: Angular
+    category: frontend
+    aliases: [angular, angularjs]
+  - name: Vue.js
+    category: frontend
+    aliases: [vue.js, vuejs, vue]
+  - name: HTML
+    category: frontend
+    aliases: [html, html5]
+  - name: CSS
+    category: frontend
+    aliases: [css, css3]
+  - name: Sass
+    category: frontend
+    aliases: [sass, scss]
+  - name: Redux
+    category: frontend
+    aliases: [redux]
+  - name: Next.js
+    category: frontend
+    aliases: [next.js, nextjs]
+  - name: Svelte
+    category: frontend
+    aliases: [svelte]
+  - name: jQuery
+    category: frontend
+    aliases: [jquery]
+  - name: Webpack
+    category: frontend
+    aliases: [webpack]
+  - name: Tailwind CSS
+    category: frontend
+    aliases: [tailwind css, tailwindcss, tailwind]
+  - name: Bootstrap
+    category: frontend
+    aliases: [bootstrap]
+
+  # --- backend ---
+  - name: .NET
+    category: backend
+    aliases: [.net, dotnet, asp.net]
+  - name: Spring
+    category: backend
+    aliases: [spring framework]
+    strict_aliases: [Spring]
+  - name: Spring Boot
+    category: backend
+    aliases: [spring boot]
+  - name: Node.js
+    category: backend
+    aliases: [node.js, nodejs, node]
+  - name: Django
+    category: backend
+    aliases: [django]
+  - name: Flask
+    category: backend
+    aliases: [flask]
+  - name: FastAPI
+    category: backend
+    aliases: [fastapi]
+  - name: Ruby on Rails
+    category: backend
+    aliases: [ruby on rails, rails]
+  - name: Laravel
+    category: backend
+    aliases: [laravel]
+  - name: Express.js
+    category: backend
+    aliases: [express.js, expressjs, express]
+  - name: Symfony
+    category: backend
+    aliases: [symfony]
+  - name: NestJS
+    category: backend
+    aliases: [nestjs, nest.js]
+  - name: REST API
+    category: backend
+    aliases: [rest api, restful api, rest]
+  - name: GraphQL
+    category: backend
+    aliases: [graphql]
+  - name: Microservices
+    category: backend
+    aliases: [microservices, microservice architecture]
+  - name: Salesforce
+    category: backend
+    aliases: [salesforce]
+  - name: SAP
+    category: backend
+    aliases: [sap]
+  - name: ServiceNow
+    category: backend
+    aliases: [servicenow]
+
+  # --- mobile ---
+  - name: Android
+    category: mobile
+    aliases: [android]
+  - name: iOS
+    category: mobile
+    aliases: [ios]
+  - name: React Native
+    category: mobile
+    aliases: [react native]
+  - name: Flutter
+    category: mobile
+    aliases: [flutter]
+  - name: SwiftUI
+    category: mobile
+    aliases: [swiftui]
+  - name: Xamarin
+    category: mobile
+    aliases: [xamarin]
+  - name: Unity
+    category: mobile
+    aliases: [unity, unity3d]
+
+  # --- database ---
+  - name: PostgreSQL
+    category: database
+    aliases: [postgresql, postgres]
+  - name: MySQL
+    category: database
+    aliases: [mysql]
+  - name: MongoDB
+    category: database
+    aliases: [mongodb, mongo]
+  - name: Redis
+    category: database
+    aliases: [redis]
+  - name: Oracle Database
+    category: database
+    aliases: [oracle database, oracle db]
+    strict_aliases: [Oracle]
+  - name: SQLite
+    category: database
+    aliases: [sqlite]
+  - name: Cassandra
+    category: database
+    aliases: [cassandra]
+  - name: Elasticsearch
+    category: database
+    aliases: [elasticsearch]
+  - name: DynamoDB
+    category: database
+    aliases: [dynamodb]
+  - name: MariaDB
+    category: database
+    aliases: [mariadb]
+  - name: MS SQL Server
+    category: database
+    aliases: [ms sql server, sql server, mssql]
+
+  # --- data ---
+  - name: Apache Spark
+    category: data
+    aliases: [apache spark, spark]
+  - name: Hadoop
+    category: data
+    aliases: [hadoop]
+  - name: Kafka
+    category: data
+    aliases: [kafka, apache kafka]
+  - name: Airflow
+    category: data
+    aliases: [airflow, apache airflow]
+  - name: ETL
+    category: data
+    aliases: [etl]
+  - name: Power BI
+    category: data
+    aliases: [power bi, powerbi]
+  - name: Tableau
+    category: data
+    aliases: [tableau]
+  - name: Pandas
+    category: data
+    aliases: [pandas]
+  - name: NumPy
+    category: data
+    aliases: [numpy]
+  - name: dbt
+    category: data
+    aliases: [dbt]
+  - name: Snowflake
+    category: data
+    aliases: [snowflake]
+  - name: BigQuery
+    category: data
+    aliases: [bigquery, big query]
+  - name: Data Warehouse
+    category: data
+    aliases: [data warehouse, data warehousing]
+  - name: RPA
+    category: data
+    aliases: [rpa, robotic process automation]
+
+  # --- ml ---
+  - name: Machine Learning
+    category: ml
+    aliases: [machine learning]
+  - name: TensorFlow
+    category: ml
+    aliases: [tensorflow]
+  - name: PyTorch
+    category: ml
+    aliases: [pytorch]
+  - name: scikit-learn
+    category: ml
+    aliases: [scikit-learn, sklearn]
+  - name: Deep Learning
+    category: ml
+    aliases: [deep learning]
+  - name: NLP
+    category: ml
+    aliases: [nlp, natural language processing]
+  - name: Computer Vision
+    category: ml
+    aliases: [computer vision]
+  - name: Keras
+    category: ml
+    aliases: [keras]
+  - name: OpenCV
+    category: ml
+    aliases: [opencv]
+  - name: Hugging Face
+    category: ml
+    aliases: [hugging face, huggingface]
+  - name: LLM
+    category: ml
+    aliases: [llm, large language model]
+  - name: Generative AI
+    category: ml
+    aliases: [generative ai, genai]
+
+  # --- cloud ---
+  - name: AWS
+    category: cloud
+    aliases: [aws, amazon web services]
+  - name: Azure
+    category: cloud
+    aliases: [azure, microsoft azure]
+  - name: Google Cloud Platform
+    category: cloud
+    aliases: [google cloud platform, gcp, google cloud]
+  - name: Cloud Computing
+    category: cloud
+    aliases: [cloud computing]
+
+  # --- devops ---
+  - name: Docker
+    category: devops
+    aliases: [docker]
+  - name: Kubernetes
+    category: devops
+    aliases: [kubernetes, k8s]
+  - name: Terraform
+    category: devops
+    aliases: [terraform]
+  - name: Jenkins
+    category: devops
+    aliases: [jenkins]
+  - name: CI/CD
+    category: devops
+    aliases: [ci/cd, continuous integration, continuous delivery]
+  - name: Ansible
+    category: devops
+    aliases: [ansible]
+  - name: GitLab CI
+    category: devops
+    aliases: [gitlab ci, gitlab]
+  - name: GitHub Actions
+    category: devops
+    aliases: [github actions]
+  - name: Helm
+    category: devops
+    aliases: [helm]
+  - name: Prometheus
+    category: devops
+    aliases: [prometheus]
+  - name: Grafana
+    category: devops
+    aliases: [grafana]
+  - name: Linux
+    category: devops
+    aliases: [linux]
+  - name: Bash
+    category: devops
+    aliases: [bash, shell scripting]
+  - name: Git
+    category: devops
+    aliases: [git]
+    strict_aliases: [Git]
+
+  # --- qa ---
+  - name: Manual Testing
+    category: qa
+    aliases: [manual testing]
+  - name: Automated Testing
+    category: qa
+    aliases: [automated testing, test automation]
+  - name: Selenium
+    category: qa
+    aliases: [selenium]
+  - name: Cypress
+    category: qa
+    aliases: [cypress]
+  - name: JUnit
+    category: qa
+    aliases: [junit]
+  - name: TestNG
+    category: qa
+    aliases: [testng]
+  - name: Postman
+    category: qa
+    aliases: [postman]
+  - name: Playwright
+    category: qa
+    aliases: [playwright]
+  - name: Appium
+    category: qa
+    aliases: [appium]
+  - name: JMeter
+    category: qa
+    aliases: [jmeter]
+  - name: API Testing
+    category: qa
+    aliases: [api testing]
+
+  # --- security ---
+  - name: Cybersecurity
+    category: security
+    aliases: [cybersecurity, cyber security]
+  - name: Penetration Testing
+    category: security
+    aliases: [penetration testing, pentesting, pen testing]
+  - name: OWASP
+    category: security
+    aliases: [owasp]
+  - name: SIEM
+    category: security
+    aliases: [siem]
+  - name: Network Security
+    category: security
+    aliases: [network security]
+  - name: Cryptography
+    category: security
+    aliases: [cryptography]
+  - name: Ethical Hacking
+    category: security
+    aliases: [ethical hacking]
+
+  # --- analysis_pm ---
+  - name: Business Analysis
+    category: analysis_pm
+    aliases: [business analysis]
+  - name: Project Management
+    category: analysis_pm
+    aliases: [project management]
+  - name: Agile
+    category: analysis_pm
+    aliases: [agile]
+  - name: Scrum
+    category: analysis_pm
+    aliases: [scrum]
+  - name: Jira
+    category: analysis_pm
+    aliases: [jira]
+  - name: Confluence
+    category: analysis_pm
+    aliases: [confluence]
+  - name: Kanban
+    category: analysis_pm
+    aliases: [kanban]
+  - name: Product Management
+    category: analysis_pm
+    aliases: [product management]
+
+  # --- design ---
+  - name: UI/UX Design
+    category: design
+    aliases: [ui/ux design, ux design, ui design, ux/ui]
+  - name: Figma
+    category: design
+    aliases: [figma]
+  - name: Adobe Photoshop
+    category: design
+    aliases: [adobe photoshop, photoshop]
+  - name: Adobe Illustrator
+    category: design
+    aliases: [adobe illustrator, illustrator]
+  - name: Sketch
+    category: design
+    aliases: [sketch]
+  - name: Prototyping
+    category: design
+    aliases: [prototyping]
+  - name: User Research
+    category: design
+    aliases: [user research]
+  - name: Adobe XD
+    category: design
+    aliases: [adobe xd]
+
+# EPAM's MainSkillStringId (pageProps.filters.Filter.Skills, confirmed via I-01
+# real-data inspection) -> taxonomy skill names above. Values with no clear
+# 1:1 technology (English, InstructionalDesign, Chemistry, FinancialAnalysisInIt,
+# ScientificInformatics, SupportServices, PerformanceOptimization) are omitted
+# on purpose rather than guessed.
+direction_map:
+  NET: [.NET]
+  AWS: [AWS]
+  Android: [Android]
+  APIsAndIntegration: [REST API]
+  AutomatedTesting: [Automated Testing]
+  AutomatedTestingNET: [Automated Testing, .NET]
+  AutomatedTestingJava: [Automated Testing, Java]
+  AutomatedTestingJS: [Automated Testing, JavaScript]
+  AutomatedTestingPython: [Automated Testing, Python]
+  BusinessAnalysis: [Business Analysis]
+  Cpp: [C++]
+  CloudAndDevOps: [AWS, Azure, Docker, Kubernetes]
+  DataAnalyticsEngineering: [Data Warehouse, ETL, Power BI]
+  DataQuality: [ETL]
+  DataScience: [Machine Learning, Python, Pandas]
+  DataSoftwareEngineering: [Apache Spark, ETL, Python]
+  Golang: [Go]
+  iOS: [iOS]
+  Java: [Java]
+  JavaScript: [JavaScript]
+  NodeJs: [Node.js]
+  PHP: [PHP]
+  PM: [Project Management]
+  Python: [Python]
+  RPA: [RPA]
+  Ruby: [Ruby]
+  Salesforce: [Salesforce]
+  SAP: [SAP]
+  SecurityTesting: [Cybersecurity, Penetration Testing]
+  ServiceNow: [ServiceNow]
+  SoftwareTesting: [Manual Testing, Automated Testing]
+  UnityNET: [Unity, .NET]
+  UXDesign: [UI/UX Design, Figma]
