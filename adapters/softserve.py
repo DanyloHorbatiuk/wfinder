@@ -5,9 +5,9 @@ from core.model import Course
 
 
 class SoftServeAdapter(BaseAdapter):
+    source = "softserve"
 
     def parse(self, raw: dict, file_record_id: int) -> list[Course]:
-        self.source = "softserve"
         all_courses = raw["data"]
         courses = []
 

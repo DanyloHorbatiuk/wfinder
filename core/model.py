@@ -1,17 +1,15 @@
-from datetime import datetime
-
-from pygments.lexer import default
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
-    Index, PrimaryKeyConstraint, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
+
+from utils.time import utcnow
 
 Base = declarative_base()
 
@@ -26,7 +24,7 @@ class FileRecord(Base):
     source = Column(String, nullable=False)  # "epam" | "softserve" | "sigma"
     status = Column(String, default="pending", nullable=False)  # pending → processing → done/error
     size_bytes = Column(Integer, nullable=True)
-    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_at = Column(DateTime, default=utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
     error_message = Column(String, nullable=True)
 
@@ -42,12 +40,15 @@ class FileRecord(Base):
 
 class Course(Base):
     __tablename__ = "courses"
-    Index(
-        "uq_active_course_per_source",
-        "source", "source_id",
-        unique=True,
-        postgresql_where=(Column("active_to") == None),
-    ) # checks unique combinations of ("source", "source_id") only in rows with active status
+    __table_args__ = (
+        # checks unique combinations of ("source", "source_id") only in rows with active status
+        Index(
+            "uq_active_course_per_source",
+            "source", "source_id",
+            unique=True,
+            postgresql_where=Column("active_to").is_(None),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     source = Column(String, nullable=False)  # "epam" | "softserve" | "sigma"
@@ -66,7 +67,7 @@ class Course(Base):
     city = Column(String, nullable=True)
     languages = Column(JSONB, nullable=True)  # ["English", "Ukrainian"]
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     active_from = Column(DateTime, nullable=True)
     active_to = Column(DateTime, nullable=True)  # NULL = active
 
@@ -76,6 +77,5 @@ class Course(Base):
     def __repr__(self) -> str:
         return (
             f"Course(id={self.id}/{self.source_id}, source={self.source!r}, "
-            f"title={self.title!r}, type={self.course_type!r}, "
-            f"status={self.status!r}, is_free={self.is_free})"
+            f"title={self.title!r}, type={self.course_type!r}, status={self.status!r})"
         )

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     telegram_token: str
     telegram_chat_id: str
 
+    notify_dry_run: bool = True
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

@@ -3,9 +3,9 @@ from core.model import Course
 
 
 class EpamAdapter(BaseAdapter):
+    source = "epam"
 
     def parse(self, raw: dict, file_record_id: int) -> list[Course]:
-        self.source = "epam"
         all_courses = raw["pageProps"]["trainings"]["Items"]
         courses = []
         for course in all_courses:

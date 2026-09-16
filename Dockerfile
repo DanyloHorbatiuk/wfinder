@@ -8,4 +8,6 @@ RUN pip install --no-cache-dir \
     python-dotenv \
     curl-cffi \
     pydantic_settings \
+    httpx \
+    alembic \
     --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.0/constraints-3.12.txt"
