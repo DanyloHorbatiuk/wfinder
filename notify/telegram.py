@@ -6,14 +6,14 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def send_telegram_message(text: str) -> None:
+def send_telegram_message(text: str, chat_id: str | None = None) -> None:
     settings = get_settings()
     if settings.notify_dry_run:
         logger.info(f"[dry-run] telegram message:\n{text}")
         return
     url = f"https://api.telegram.org/bot{settings.telegram_token}/sendMessage"
     payload = {
-        "chat_id": settings.telegram_chat_id,
+        "chat_id": chat_id or settings.telegram_chat_id,
         "text": text,
         "parse_mode": "HTML",
     }

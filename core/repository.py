@@ -1,10 +1,7 @@
-from datetime import datetime, time
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.model import FileRecord, Course
-from utils.time import utcnow
 
 
 class FileRecordRepository:
@@ -33,11 +30,3 @@ class CourseRepository:
     def get_active_by_source(self, source: str) -> dict[str, Course]:
         stmt = select(Course).where(Course.source == source, Course.active_to.is_(None))
         return {c.source_id: c for c in self.session.scalars(stmt)}
-
-    def get_courses_created_today(self) -> list[Course]:
-        today_start = datetime.combine(utcnow().date(), time.min)
-        stmt = select(Course).where(
-            Course.created_at >= today_start,
-            Course.active_to.is_(None),
-        )
-        return list(self.session.scalars(stmt))

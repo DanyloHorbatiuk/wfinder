@@ -3,10 +3,16 @@ from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 
 
+def _task_failure_alert(context: dict) -> None:
+    from notify.alerts import task_failure_alert
+    task_failure_alert(context)
+
+
 @dag(
     schedule="30 8 * * *",  # daily at 8:30 am UTC
     start_date=datetime(2026, 6, 16),
     catchup=False,
+    default_args={"on_failure_callback": _task_failure_alert},
 )
 
 def load_courses_pipeline_dag():
@@ -41,9 +47,9 @@ def load_courses_pipeline_dag():
             session.close()
 
     @task(trigger_rule="all_done")
-    def notify_digest():
-        from notify.digest import build_and_send_today_digest
-        build_and_send_today_digest()
+    def notify_digest(load_report: dict):
+        from notify.digest import build_and_send_digest
+        build_and_send_digest(load_report)
         return True
 
     @task(trigger_rule="all_done")
@@ -70,7 +76,7 @@ def load_courses_pipeline_dag():
     sources = get_sources()
     fetch_task = fetch_one_source.expand(source=sources)
     load_task = load_all_to_db()
-    notify_task = notify_digest()
+    notify_task = notify_digest(load_task)
     finalize_task = finalize(load_task)
 
     _ = fetch_task >> load_task >> notify_task >> finalize_task

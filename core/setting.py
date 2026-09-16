@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     telegram_token: str
     telegram_chat_id: str
+    telegram_alert_chat_id: str | None = None
 
     notify_dry_run: bool = True
 
