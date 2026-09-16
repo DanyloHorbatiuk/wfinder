@@ -109,7 +109,7 @@ DAG `load_courses_pipeline_dag` (`dags/load_courses_dag.py`) запускаєт�
 - `content_hash VARCHAR(64) NULL`.
 - `last_seen_at TIMESTAMP NULL`.
 - `close_reason VARCHAR(16) NULL`, `CHECK (close_reason IN ('changed','removed'))`.
-- `CHECK ((active_to IS NULL) = (close_reason IS NULL))`. Застосувати після replay або з очищенням старих рядків; рішення записати в журнал.
+- `CHECK ((active_to IS NULL) = (close_reason IS NULL))`. Застосувати після replay або з очищенням старих рядків; рішення записати в журнал. **F-02 цей CHECK не додає** — до E-06/replay активні версії коректно мають `close_reason IS NULL`, але вже закриті до F-02 рядки мають `active_to` без `close_reason`; додати обмеження разом із E-03 (replay).
 - `description TEXT NULL` — I-01 підтвердив: поле є в SoftServe (`data[].description`), у EPAM такого поля немає (значення буде `NULL`).
 - `tags` **не додається** — I-01 не знайшов поля тегів у жодного з двох джерел (див. §15, Q1).
 - `skills_version INT NULL` (E-01).
@@ -191,6 +191,8 @@ DAG `load_courses_pipeline_dag` (`dags/load_courses_dag.py`) запускаєт�
 
 `snapshot_at = file_record.fetched_at`
 
+Кроки 1–4 (і базове оновлення `file_record.status`/`processed_at` з кроку 7) реалізовані в F-02. Кроки 5–6 (закриття зниклих пропозицій і захист) вимагають E-06; крок 7 у частині запису рядка `load_stats` вимагає таблиці `load_stats`, якої не існує до E-08 — обидва кроки навмисно не реалізовані в F-02 (ROADMAP послідовно ставить F-02 перед E-08 й E-06). Out-of-order-перевірка з §5.1 п.4 залежить від `load_stats` так само і відкладена до E-08.
+
 1. Прочитати об'єкт, виконати `json.loads` і `adapter.parse`, отримати кандидатів.
 2. Прибрати дублікати за `source_id` (перемагає останній) і порахувати `duplicates`.
 3. Завантажити активні версії джерела: `active = {source_id: Course}`.
@@ -199,9 +201,9 @@ DAG `load_courses_pipeline_dag` (`dags/load_courses_dag.py`) запускаєт�
    - **Активна версія має `content_hash IS NULL`** (старий рядок до replay) → записати `h` і `last_seen_at`, нову версію не створювати (`unchanged`).
    - **Хеш збігається** → оновити `last_seen_at = snapshot_at` (`unchanged`).
    - **Хеш відрізняється** → у старій версії встановити `active_to = snapshot_at` і `close_reason = 'changed'`, **виконати `flush()` до вставки** (цього вимагає частковий унікальний індекс), потім вставити нову версію (`changed`).
-5. `to_close = множина активних id − множина побачених id`. Відхилені записи з валідним `source_id` (E-05) теж вважаються побаченими.
-6. Перевірити захист (§5.4). Якщо закриття дозволене, для кожної версії з `to_close` встановити `active_to = snapshot_at` і `close_reason = 'removed'` (`closed`).
-7. Вставити рядок `load_stats`, встановити `file_record.status = 'done'` і `processed_at = utcnow()`.
+5. `to_close = множина активних id − множина побачених id`. Відхилені записи з валідним `source_id` (E-05) теж вважаються побаченими. **(E-06)**
+6. Перевірити захист (§5.4). Якщо закриття дозволене, для кожної версії з `to_close` встановити `active_to = snapshot_at` і `close_reason = 'removed'` (`closed`). **(E-06)**
+7. Встановити `file_record.status = 'done'` і `processed_at = utcnow()` (F-02). Вставити рядок `load_stats` **(E-08)**.
 
 ### 5.4 Захист від масового закриття (E-06)
 

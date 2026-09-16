@@ -29,10 +29,16 @@ def load_courses_pipeline_dag():
         return fetch_and_save_single(source["name"], source["url"])
 
     @task
-    def load_all_to_db():
+    def load_all_to_db(run_id: str = None) -> dict:
+        from core.db import Session
         from storage.loader import process_pending_files
-        process_pending_files()
-        return True
+
+        session = Session()
+        try:
+            report = process_pending_files(session, run_id=run_id)
+            return report.to_dict()
+        finally:
+            session.close()
 
     @task
     def notify_new_courses_task():

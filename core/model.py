@@ -1,10 +1,12 @@
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
@@ -22,8 +24,9 @@ class FileRecord(Base):
     key = Column(String, unique=True, nullable=False)
     etag = Column(String, nullable=False)
     source = Column(String, nullable=False)  # "epam" | "softserve" | "sigma"
-    status = Column(String, default="pending", nullable=False)  # pending → processing → done/error
+    status = Column(String, default="pending", nullable=False)  # pending → done/error
     size_bytes = Column(Integer, nullable=True)
+    fetched_at = Column(DateTime, nullable=False)  # time of the source snapshot, not the upload
     uploaded_at = Column(DateTime, default=utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
     error_message = Column(String, nullable=True)
@@ -48,6 +51,15 @@ class Course(Base):
             unique=True,
             postgresql_where=Column("active_to").is_(None),
         ),
+        Index("ix_courses_posting", "source", "source_id", "active_from"),
+        CheckConstraint(
+            "close_reason IN ('changed', 'removed')",
+            name="ck_courses_close_reason_valid",
+        ),
+        # NOTE: the composite CHECK ((active_to IS NULL) = (close_reason IS NULL)) from
+        # SPEC §4.2 is intentionally NOT added yet - pre-existing closed rows have
+        # active_to set with close_reason still NULL (content_hash-based history starts
+        # now). Add it once replay (E-03) has backfilled close_reason for old rows.
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -66,6 +78,11 @@ class Course(Base):
     country = Column(String, nullable=True)
     city = Column(String, nullable=True)
     languages = Column(JSONB, nullable=True)  # ["English", "Ukrainian"]
+    description = Column(Text, nullable=True)  # populated for SoftServe only; EPAM has no such field (I-01)
+
+    content_hash = Column(String(64), nullable=True)  # sha256 of tracked fields, see core/hashing.py
+    last_seen_at = Column(DateTime, nullable=True)  # snapshot_at of the last time this version was observed
+    close_reason = Column(String(16), nullable=True)  # "changed" | "removed", NULL while active
 
     created_at = Column(DateTime, default=utcnow, nullable=False)
     active_from = Column(DateTime, nullable=True)

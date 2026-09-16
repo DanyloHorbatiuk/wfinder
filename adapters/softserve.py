@@ -29,6 +29,7 @@ class SoftServeAdapter(BaseAdapter):
                     country="Ukraine",
                     city=None,
                     languages=None,
+                    description=course.get("description"),
                     file_record_id=file_record_id,
                 )
             )
