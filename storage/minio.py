@@ -51,25 +51,27 @@ def _ensure_bucket_exists(s3_client):
             raise
 
 
-def save_object(name: str, content: str) -> dict:
+def put_object(key: str, content: bytes, content_type: str = "application/json") -> dict:
     s3_client = get_s3_client()
-    key = f"raw/{name}.json"
-    logger.info(f"saving '{name}' to minio bucket '{BUCKET}'...")
-    body_bytes = content.encode("utf-8")
+    logger.info(f"saving object '{key}' to minio bucket '{BUCKET}'...")
     try:
         response = s3_client.put_object(
             Bucket=BUCKET,
             Key=key,
-            Body=body_bytes,
-            ContentType="application/json",
+            Body=content,
+            ContentType=content_type,
         )
         logger.info(f"saving '{key}' is finished")
         return {
             "bucket": BUCKET,
             "key": key,
             "etag": response["ETag"].strip('"'),
-            "size_bytes": len(body_bytes),
+            "size_bytes": len(content),
         }
     except ClientError as e:
         logger.error(f"failed saving '{key}': {e}")
         raise
+
+
+def save_object(name: str, content: str) -> dict:
+    return put_object(f"raw/{name}.json", content.encode("utf-8"))

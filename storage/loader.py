@@ -135,7 +135,9 @@ def _process_one_file(
 
     response = s3_client.get_object(Bucket=file_record.bucket, Key=file_record.key)
     raw = json.loads(response["Body"].read())
-    candidates = adapter.parse(raw, file_record.id)
+    parse_result = adapter.parse(raw, file_record.id)
+    candidates = parse_result.valid
+    rejected_items = parse_result.rejected
 
     snapshot_at = file_record.fetched_at
     file_stats = SourceStats()
@@ -149,7 +151,15 @@ def _process_one_file(
     if duplicates:
         logger.info(f"file {file_record.key}: {duplicates} duplicate source_id(s) in snapshot")
 
-    file_stats.received += len(deduped)
+    valid_ids = set(deduped.keys())
+    # rejected records with a valid source_id count as "received" and "seen" (SPEC §5.3 п.5, §10)
+    rejected_ids = {r.source_id for r in rejected_items if r.source_id} - valid_ids
+
+    file_stats.received = len(valid_ids) + len(rejected_ids)
+    file_stats.rejected = len(rejected_ids)
+
+    if rejected_items:
+        _quarantine_rejected(file_record, rejected_items)
 
     course_repo = CourseRepository(session)
     active_by_source_id = course_repo.get_active_by_source(file_record.source)
@@ -186,7 +196,8 @@ def _process_one_file(
             session.flush()
             file_stats.changed += 1
 
-    to_close = [c for sid, c in active_by_source_id.items() if sid not in deduped]
+    seen_ids = valid_ids | rejected_ids
+    to_close = [c for sid, c in active_by_source_id.items() if sid not in seen_ids]
     decision = evaluate_closure_guard(
         session,
         source=file_record.source,
@@ -230,6 +241,23 @@ def _process_one_file(
     file_record.status = "done"
     file_record.processed_at = utcnow()
     logger.info(f"file '{file_record.key}' processed: {file_stats.to_dict()}")
+
+
+def _quarantine_rejected(file_record: FileRecord, rejected_items: list) -> None:
+    """One MinIO object per snapshot with rejected records: quarantine/{source}/{file_stem}.jsonl
+    (SPEC §10). Not part of the DB transaction - MinIO writes aren't rolled back,
+    matching how raw/ writes already work."""
+    from pathlib import Path
+
+    from storage.minio import put_object
+
+    file_stem = Path(file_record.key).stem
+    lines = [
+        json.dumps({"source_id": r.source_id, "reason": r.reason, "item": r.raw_item}, ensure_ascii=False, default=str)
+        for r in rejected_items
+    ]
+    content = ("\n".join(lines) + "\n").encode("utf-8")
+    put_object(f"quarantine/{file_record.source}/{file_stem}.jsonl", content, content_type="application/jsonl")
 
 
 def _check_snapshot_order(session: Session, file_record: FileRecord) -> None:
