@@ -1,14 +1,16 @@
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from adapters.epam import EpamAdapter
 from adapters.softserve import SoftServeAdapter
 from core.db import Session as SessionFactory
 from core.hashing import content_hash
-from core.model import Course, FileRecord
+from core.model import Course, FileRecord, LoadStats
 from core.repository import CourseRepository, FileRecordRepository
 from storage.minio import get_s3_client
 from utils.logger import get_logger
@@ -32,6 +34,14 @@ class SourceStats:
     unchanged: int = 0
     closed: int = 0
     rejected: int = 0
+
+    def add(self, other: "SourceStats") -> None:
+        self.received += other.received
+        self.inserted += other.inserted
+        self.changed += other.changed
+        self.unchanged += other.unchanged
+        self.closed += other.closed
+        self.rejected += other.rejected
 
     def to_dict(self) -> dict:
         return {
@@ -66,8 +76,9 @@ class LoadReport:
 
 
 def process_pending_files(session: Session, run_id: str | None = None, commit_per_file: bool = True) -> LoadReport:
-    """SPEC §5.1. Closing missing postings (E-06) and load_stats (E-08) are not
-    implemented yet - this only covers insert/changed/unchanged (§5.3 steps 1-4)."""
+    """SPEC §5.1. Closing missing postings and the mass-closure guard (E-06) are
+    not implemented yet - this covers insert/changed/unchanged (§5.3 steps 1-4)
+    and load_stats (§5.3 step 7, E-08)."""
     report = LoadReport()
     failed_sources: set[str] = set()
 
@@ -83,7 +94,7 @@ def process_pending_files(session: Session, run_id: str | None = None, commit_pe
 
         savepoint = session.begin_nested() if not commit_per_file else None
         try:
-            _process_one_file(session, file_record, s3_client, report)
+            _process_one_file(session, file_record, s3_client, report, run_id)
         except Exception as exc:
             logger.error(f"error processing file {file_record.key}: {exc}")
             if savepoint is not None:
@@ -109,19 +120,24 @@ def process_pending_files(session: Session, run_id: str | None = None, commit_pe
     return report
 
 
-def _process_one_file(session: Session, file_record: FileRecord, s3_client, report: LoadReport) -> None:
+def _process_one_file(
+    session: Session, file_record: FileRecord, s3_client, report: LoadReport, run_id: str | None
+) -> None:
     logger.info(f"processing file {file_record.key}...")
+    start = time.monotonic()
 
     adapter = ADAPTERS.get(file_record.source)
     if adapter is None:
         raise ValueError(f"unknown source: {file_record.source}")
+
+    _check_snapshot_order(session, file_record)
 
     response = s3_client.get_object(Bucket=file_record.bucket, Key=file_record.key)
     raw = json.loads(response["Body"].read())
     candidates = adapter.parse(raw, file_record.id)
 
     snapshot_at = file_record.fetched_at
-    stats = report.stats_for(file_record.source)
+    file_stats = SourceStats()
 
     deduped: dict[str, Course] = {}
     duplicates = 0
@@ -132,7 +148,7 @@ def _process_one_file(session: Session, file_record: FileRecord, s3_client, repo
     if duplicates:
         logger.info(f"file {file_record.key}: {duplicates} duplicate source_id(s) in snapshot")
 
-    stats.received += len(deduped)
+    file_stats.received += len(deduped)
 
     course_repo = CourseRepository(session)
     active_by_source_id = course_repo.get_active_by_source(file_record.source)
@@ -149,15 +165,15 @@ def _process_one_file(session: Session, file_record: FileRecord, s3_client, repo
             session.add(candidate)
             session.flush()
             report.new_course_ids.append(candidate.id)
-            stats.inserted += 1
+            file_stats.inserted += 1
         elif existing.content_hash is None:
             # legacy row predating content_hash: backfill without creating a new version
             existing.content_hash = h
             existing.last_seen_at = snapshot_at
-            stats.unchanged += 1
+            file_stats.unchanged += 1
         elif existing.content_hash == h:
             existing.last_seen_at = snapshot_at
-            stats.unchanged += 1
+            file_stats.unchanged += 1
         else:
             existing.active_to = snapshot_at
             existing.close_reason = "changed"
@@ -167,11 +183,48 @@ def _process_one_file(session: Session, file_record: FileRecord, s3_client, repo
             candidate.last_seen_at = snapshot_at
             session.add(candidate)
             session.flush()
-            stats.changed += 1
+            file_stats.changed += 1
+
+    duration_ms = int((time.monotonic() - start) * 1000)
+    session.add(
+        LoadStats(
+            file_record_id=file_record.id,
+            source=file_record.source,
+            snapshot_at=snapshot_at,
+            run_id=run_id,
+            received=file_stats.received,
+            rejected=file_stats.rejected,
+            duplicates=duplicates,
+            inserted=file_stats.inserted,
+            changed=file_stats.changed,
+            unchanged=file_stats.unchanged,
+            closed=file_stats.closed,
+            closures_blocked=False,
+            block_reason=None,
+            parser_version=adapter.PARSER_VERSION,
+            duration_ms=duration_ms,
+        )
+    )
+    session.flush()
+
+    report.stats_for(file_record.source).add(file_stats)
 
     file_record.status = "done"
     file_record.processed_at = utcnow()
-    logger.info(f"file '{file_record.key}' processed: {stats.to_dict()}")
+    logger.info(f"file '{file_record.key}' processed: {file_stats.to_dict()}")
+
+
+def _check_snapshot_order(session: Session, file_record: FileRecord) -> None:
+    """SPEC §5.1 п.4: a snapshot older than the last one we already recorded
+    for this source means history is out of order - fix via replay (E-03)."""
+    last_snapshot_at = session.scalar(
+        select(func.max(LoadStats.snapshot_at)).where(LoadStats.source == file_record.source)
+    )
+    if last_snapshot_at is not None and file_record.fetched_at < last_snapshot_at:
+        raise ValueError(
+            f"out-of-order snapshot: fetched_at={file_record.fetched_at} "
+            f"is older than the last recorded snapshot_at={last_snapshot_at} for source={file_record.source}"
+        )
 
 
 def save_file_record(

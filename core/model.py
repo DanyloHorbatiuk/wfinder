@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Column,
     DateTime,
@@ -96,3 +97,33 @@ class Course(Base):
             f"Course(id={self.id}/{self.source_id}, source={self.source!r}, "
             f"title={self.title!r}, type={self.course_type!r}, status={self.status!r})"
         )
+
+
+class LoadStats(Base):
+    """One row per processed file_record (SPEC §4.2, §5.3 п.7)."""
+
+    __tablename__ = "load_stats"
+
+    id = Column(Integer, primary_key=True)
+    file_record_id = Column(Integer, ForeignKey("file_record.id"), unique=True, nullable=False)
+    source = Column(String, nullable=False)
+    snapshot_at = Column(DateTime, nullable=False)  # = file_record.fetched_at
+    run_id = Column(String, nullable=True)  # Airflow run_id or "replay"
+
+    received = Column(Integer, nullable=False)  # distinct source_id in the snapshot, including rejected
+    rejected = Column(Integer, nullable=False, default=0)  # 0 until E-05
+    duplicates = Column(Integer, nullable=False, default=0)  # repeated source_id in the snapshot
+    inserted = Column(Integer, nullable=False)
+    changed = Column(Integer, nullable=False)
+    unchanged = Column(Integer, nullable=False)
+    closed = Column(Integer, nullable=False, default=0)  # 0 until E-06
+
+    closures_blocked = Column(Boolean, nullable=False, default=False)  # until E-06
+    block_reason = Column(Text, nullable=True)
+
+    parser_version = Column(Integer, nullable=False)
+    duration_ms = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"LoadStats(file_record_id={self.file_record_id}, source={self.source!r}, snapshot_at={self.snapshot_at})"
