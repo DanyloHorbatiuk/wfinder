@@ -20,6 +20,12 @@ class Settings(BaseSettings):
 
     notify_dry_run: bool = True
 
+    guard_min_ratio: float = 0.5
+    guard_history_n: int = 7
+    guard_min_history: int = 3
+    guard_max_close_share: float = 0.5
+    guard_min_active: int = 10
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

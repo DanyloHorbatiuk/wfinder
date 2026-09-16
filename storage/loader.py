@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from adapters.epam import EpamAdapter
 from adapters.softserve import SoftServeAdapter
 from core.db import Session as SessionFactory
+from core.guard import evaluate_closure_guard
 from core.hashing import content_hash
 from core.model import Course, FileRecord, LoadStats
 from core.repository import CourseRepository, FileRecordRepository
@@ -76,9 +77,9 @@ class LoadReport:
 
 
 def process_pending_files(session: Session, run_id: str | None = None, commit_per_file: bool = True) -> LoadReport:
-    """SPEC §5.1. Closing missing postings and the mass-closure guard (E-06) are
-    not implemented yet - this covers insert/changed/unchanged (§5.3 steps 1-4)
-    and load_stats (§5.3 step 7, E-08)."""
+    """SPEC §5.1, §5.3: insert/changed/unchanged (steps 1-4), closing postings
+    that disappeared from the snapshot behind the mass-closure guard (steps 5-6,
+    E-06), and load_stats (step 7, E-08)."""
     report = LoadReport()
     failed_sources: set[str] = set()
 
@@ -185,6 +186,23 @@ def _process_one_file(
             session.flush()
             file_stats.changed += 1
 
+    to_close = [c for sid, c in active_by_source_id.items() if sid not in deduped]
+    decision = evaluate_closure_guard(
+        session,
+        source=file_record.source,
+        received=file_stats.received,
+        active_count=len(active_by_source_id),
+        to_close_count=len(to_close),
+    )
+    if decision.allowed:
+        for course in to_close:
+            course.active_to = snapshot_at
+            course.close_reason = "removed"
+        file_stats.closed = len(to_close)
+    else:
+        logger.info(f"file {file_record.key}: closures blocked - {decision.reason}")
+        report.blocked.append({"source": file_record.source, "reason": decision.reason})
+
     duration_ms = int((time.monotonic() - start) * 1000)
     session.add(
         LoadStats(
@@ -199,8 +217,8 @@ def _process_one_file(
             changed=file_stats.changed,
             unchanged=file_stats.unchanged,
             closed=file_stats.closed,
-            closures_blocked=False,
-            block_reason=None,
+            closures_blocked=not decision.allowed,
+            block_reason=decision.reason,
             parser_version=adapter.PARSER_VERSION,
             duration_ms=duration_ms,
         )
